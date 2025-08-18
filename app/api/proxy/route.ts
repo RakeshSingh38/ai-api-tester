@@ -27,26 +27,107 @@ export async function POST(request: NextRequest) {
       headers['authorization'] = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
     }
 
-    const response = await fetch(url, {
-      method: method,
-      headers: headers,
-      body: JSON.stringify(data)
-    });
+    console.log('Making request to:', url);
+    console.log('Request data:', JSON.stringify(data, null, 2));
 
-    const responseData = await response.text();
+    // Handle streaming responses for completions endpoint
+    if (url.includes('/chat/completions')) {
+      const response = await fetch(url, {
+        method: method,
+        headers: headers,
+        body: JSON.stringify(data)
+      });
 
-    if (!response.ok) {
-      return NextResponse.json(
-        { message: `Request failed: ${response.status} - ${responseData}` },
-        { status: response.status }
-      );
-    }
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
-    try {
-      const jsonData = JSON.parse(responseData);
-      return NextResponse.json(jsonData);
-    } catch {
-      return NextResponse.json({ data: responseData });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        return NextResponse.json(
+          { message: `Request failed: ${response.status} - ${errorText}` },
+          { status: response.status }
+        );
+      }
+
+      // Check if it's a streaming response
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('text/event-stream')) {
+        // Handle Server-Sent Events
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let result = '';
+        let chunks = [];
+
+        if (reader) {
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              
+              const chunk = decoder.decode(value, { stream: true });
+              result += chunk;
+              
+              // Parse SSE data
+              const lines = chunk.split('\n');
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const jsonStr = line.slice(6);
+                  if (jsonStr.trim() !== '[DONE]' && jsonStr.trim() !== '') {
+                    try {
+                      const jsonData = JSON.parse(jsonStr);
+                      chunks.push(jsonData);
+                    } catch (e) {
+                      // Skip invalid JSON
+                    }
+                  }
+                }
+              }
+            }
+            
+            console.log('Streaming chunks received:', chunks.length);
+            return NextResponse.json({ data: chunks });
+          } catch (streamError) {
+            console.error('Stream reading error:', streamError);
+            return NextResponse.json({ data: chunks });
+          }
+        }
+      } else {
+        // Handle regular JSON response
+        const responseText = await response.text();
+        console.log('Response text:', responseText);
+        
+        try {
+          const jsonData = JSON.parse(responseText);
+          return NextResponse.json(jsonData);
+        } catch {
+          return NextResponse.json({ data: responseText });
+        }
+      }
+    } else {
+      // Handle regular requests (like chat creation)
+      const response = await fetch(url, {
+        method: method,
+        headers: headers,
+        body: JSON.stringify(data)
+      });
+
+      const responseText = await response.text();
+      console.log('Regular response:', response.status, responseText);
+
+      if (!response.ok) {
+        return NextResponse.json(
+          { message: `Request failed: ${response.status} - ${responseText}` },
+          { status: response.status }
+        );
+      }
+
+      try {
+        const jsonData = JSON.parse(responseText);
+        return NextResponse.json(jsonData);
+      } catch {
+        return NextResponse.json({ data: responseText });
+      }
     }
 
   } catch (error) {
