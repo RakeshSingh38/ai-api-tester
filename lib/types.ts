@@ -34,7 +34,7 @@ export interface AIModel {
 
 export const AI_MODELS: AIModel[] = [
   { value: 'claude', label: 'Claude Sonnet 4', category: 'premium', icon: '🤖' },
-  { value: 'gpt-4', label: 'ChatGPT 5', category: 'premium', icon: '🧠' },
+  { value: 'chatgpt', label: 'ChatGPT 5', category: 'premium', icon: '🧠' },
   { value: 'gemini', label: 'Gemini Pro', category: 'premium', icon: '✨' },
   { value: 'deepseek', label: 'DeepSeek', category: 'free', icon: '🔍' },
   { value: 'perplexity', label: 'Perplexity Sonar Pro', category: 'premium', icon: '🔮' },

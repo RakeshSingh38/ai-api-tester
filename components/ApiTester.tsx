@@ -113,48 +113,73 @@ export const ApiTester: React.FC = () => {
   };
 
   // Handle streaming responses
-  const handleStreamingResponse = async (response: Response): Promise<any> => {
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    let chunks: any[] = [];
-    
-    if (!reader) {
-      throw new Error('Unable to read streaming response');
-    }
+// Update the handleStreamingResponse function in components/ApiTester.tsx
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const jsonStr = line.slice(6).trim();
-            if (jsonStr !== '[DONE]' && jsonStr !== '') {
-              try {
-                const jsonData = JSON.parse(jsonStr);
-                chunks.push(jsonData);
-                console.log('Received chunk:', jsonData);
-              } catch (e) {
-                console.log('Skipping non-JSON chunk:', jsonStr);
+const handleStreamingResponse = async (response: Response): Promise<any> => {
+  const reader = response.body?.getReader();
+  const decoder = new TextDecoder();
+  let chunks: any[] = [];
+  let fullText = '';
+  
+  if (!reader) {
+    throw new Error('Unable to read streaming response');
+  }
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      const chunk = decoder.decode(value, { stream: true });
+      fullText += chunk;
+      
+      const lines = chunk.split('\n');
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr !== '[DONE]' && jsonStr !== '') {
+            try {
+              const jsonData = JSON.parse(jsonStr);
+              chunks.push(jsonData);
+              console.log('Received streaming chunk:', jsonData);
+              
+              // Update UI in real-time if needed
+              if (jsonData.type === 'content' && jsonData.content) {
+                // You could add real-time updates here
+                console.log('Content chunk:', jsonData.content);
               }
+            } catch (e) {
+              console.log('Skipping non-JSON chunk:', jsonStr);
             }
           }
         }
       }
-      
-      console.log('Total chunks received:', chunks.length);
-      return { data: chunks };
-    } catch (streamError) {
-      console.error('Stream reading error:', streamError);
-      return { data: chunks };
-    } finally {
-      reader.releaseLock();
     }
-  };
+    
+    console.log('Streaming complete. Total chunks:', chunks.length);
+    console.log('Full response text:', fullText);
+    
+    // Return both the parsed chunks and the full text
+    return { 
+      data: chunks,
+      fullText: fullText,
+      totalChunks: chunks.length
+    };
+    
+  } catch (streamError) {
+    console.error('Stream reading error:', streamError);
+    // Return whatever we have collected so far
+    return { 
+      data: chunks,
+      fullText: fullText,
+      error: streamError instanceof Error ? streamError.message : 'Stream error'
+    };
+  } finally {
+    reader.releaseLock();
+  }
+};
+
 
   // Fallback to proxy if direct request fails
   const makeProxyRequest = async (url: string, data: any): Promise<any> => {
@@ -282,6 +307,25 @@ export const ApiTester: React.FC = () => {
   };
 
   const selectedModel = AI_MODELS.find(m => m.value === formData.model);
+
+  // Add this to your ApiTester component, right before the return statement
+
+if (process.env.NODE_ENV === 'development' && response) {
+  console.log('Raw response in component:', response);
+  try {
+    const parsed = JSON.parse(response);
+    console.log('Parsed response:', parsed);
+    if (parsed.data) {
+      console.log('Response data array:', parsed.data);
+      parsed.data.forEach((item: any, index: number) => {
+        console.log(`Item ${index}:`, item);
+      });
+    }
+  } catch (e) {
+    console.log('Response is not JSON:', response.substring(0, 200));
+  }
+}
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
