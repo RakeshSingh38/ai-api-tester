@@ -23,118 +23,158 @@ export const ResponseDisplay: React.FC<ResponseDisplayProps> = ({
     try {
       const parsed = JSON.parse(responseText);
       
-      // Handle streaming data format
+      // Handle the new format with events array
       if (parsed.data && Array.isArray(parsed.data)) {
-        const startItem = parsed.data.find((item: any) => item.type === 'start');
-        const contentItems = parsed.data.filter((item: any) => item.type === 'content' && item.content);
+        const startEvent = parsed.data.find((event: any) => event.type === 'start');
+        const contentEvents = parsed.data.filter((event: any) => event.type === 'content' && event.content);
         
         return (
           <div className="space-y-4">
-            {/* Model Start Indicator */}
-            {startItem && (
+            {/* Show start event */}
+            {startEvent && (
               <div className="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 animate-pulse"></div>
                 <span className="text-blue-800 font-medium">
-                  {startItem.model.toUpperCase()} is generating response...
+                  {startEvent.model.toUpperCase()} started generating response...
                 </span>
               </div>
             )}
             
-            {/* Content Items */}
-            {contentItems.length > 0 ? (
-              <div className="space-y-3">
-                {contentItems.map((item: any, index: number) => (
-                  <div key={index} className="prose prose-gray max-w-none">
-                    <div className="whitespace-pre-wrap text-gray-800 leading-relaxed text-sm">
-                      {item.content}
+            {/* Show content */}
+            {contentEvents.length > 0 ? (
+              <div className="bg-gray-50 rounded-lg p-4 border">
+                <div className="prose prose-gray max-w-none">
+                  {contentEvents.map((event: any, index: number) => (
+                    <div key={index} className="mb-2">
+                      <div className="whitespace-pre-wrap text-gray-800 text-sm leading-relaxed">
+                        {event.content}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+            ) : startEvent ? (
+              <div className="text-center py-8 text-gray-500">
+                <div className="animate-pulse">
+                  <div className="text-lg mb-2">🤖</div>
+                  <div>Waiting for {startEvent.model} to respond...</div>
+                </div>
               </div>
             ) : (
               <div className="text-center py-4 text-gray-500">
-                <div className="animate-pulse">Waiting for content...</div>
+                Processing response...
+              </div>
+            )}
+            
+            {/* Debug info */}
+            {parsed.totalEvents && (
+              <div className="text-xs text-gray-500 mt-4 p-2 bg-gray-100 rounded">
+                📊 Received {parsed.totalEvents} events from stream
               </div>
             )}
           </div>
         );
       }
       
-      // Handle single streaming event (like the start event)
-      if (parsed.type === 'start') {
-        return (
-          <div className="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></div>
-            <span className="text-blue-800 font-medium">
-              {parsed.model.toUpperCase()} started generating...
-            </span>
-          </div>
-        );
-      }
-      
-      if (parsed.type === 'content' && parsed.content) {
-        return (
-          <div className="prose prose-gray max-w-none">
-            <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-              {parsed.content}
-            </div>
-          </div>
-        );
-      }
-      
-      // Fallback to formatted JSON
-      return (
-        <pre className="whitespace-pre-wrap text-sm text-gray-600 font-mono bg-gray-50 p-4 rounded-lg border">
-          {JSON.stringify(parsed, null, 2)}
-        </pre>
-      );
-      
-    } catch {
-      // Handle raw streaming response text
-      if (responseText.includes('data: {')) {
-        const lines = responseText.split('\n');
-        const events = lines
-          .filter(line => line.startsWith('data: '))
-          .map(line => {
-            try {
-              return JSON.parse(line.slice(6));
-            } catch {
-              return null;
-            }
-          })
-          .filter(Boolean);
-          
-        if (events.length > 0) {
+      // Handle legacy single event format
+      if (parsed.type) {
+        if (parsed.type === 'start') {
           return (
-            <div className="space-y-3">
-              {events.map((event: any, index: number) => (
-                <div key={index}>
-                  {event.type === 'start' && (
-                    <div className="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></div>
-                      <span className="text-blue-800 font-medium">
-                        {event.model.toUpperCase()} started generating...
-                      </span>
-                    </div>
-                  )}
-                  {event.type === 'content' && event.content && (
-                    <div className="prose prose-gray max-w-none">
-                      <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-                        {event.content}
-                      </div>
-                    </div>
-                  )}
+            <div className="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 animate-pulse"></div>
+              <span className="text-blue-800 font-medium">
+                {parsed.model?.toUpperCase() || 'AI'} started generating...
+              </span>
+            </div>
+          );
+        }
+        
+        if (parsed.type === 'content' && parsed.content) {
+          return (
+            <div className="bg-gray-50 rounded-lg p-4 border">
+              <div className="prose prose-gray max-w-none">
+                <div className="whitespace-pre-wrap text-gray-800 text-sm leading-relaxed">
+                  {parsed.content}
                 </div>
-              ))}
+              </div>
             </div>
           );
         }
       }
       
-      // Plain text fallback
+      // Fallback: show formatted JSON
       return (
-        <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-          {responseText}
+        <pre className="whitespace-pre-wrap text-sm text-gray-600 font-mono bg-gray-50 p-4 rounded-lg border max-h-96 overflow-auto">
+          {JSON.stringify(parsed, null, 2)}
+        </pre>
+      );
+      
+    } catch (parseError) {
+      // Handle raw text responses
+      console.log('Failed to parse response as JSON:', parseError);
+      
+      // Try to extract events from raw stream text
+      if (responseText.includes('data: {')) {
+        const events: any[] = [];
+        const lines = responseText.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr && jsonStr !== '[DONE]') {
+              try {
+                const event = JSON.parse(jsonStr);
+                events.push(event);
+              } catch (e) {
+                console.log('Failed to parse line:', jsonStr);
+              }
+            }
+          }
+        }
+        
+        if (events.length > 0) {
+          const startEvent = events.find(e => e.type === 'start');
+          const contentEvents = events.filter(e => e.type === 'content' && e.content);
+          
+          return (
+            <div className="space-y-4">
+              {startEvent && (
+                <div className="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 animate-pulse"></div>
+                  <span className="text-blue-800 font-medium">
+                    {startEvent.model?.toUpperCase() || 'AI'} started generating...
+                  </span>
+                </div>
+              )}
+              
+              {contentEvents.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4 border">
+                  <div className="prose prose-gray max-w-none">
+                    {contentEvents.map((event: any, index: number) => (
+                      <div key={index} className="mb-2">
+                        <div className="whitespace-pre-wrap text-gray-800 text-sm leading-relaxed">
+                          {event.content}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <div className="text-xs text-gray-500 mt-4 p-2 bg-gray-100 rounded">
+                📊 Parsed {events.length} events from raw stream
+              </div>
+            </div>
+          );
+        }
+      }
+      
+      // Last resort: show raw text
+      return (
+        <div className="bg-gray-50 rounded-lg p-4 border">
+          <div className="whitespace-pre-wrap text-gray-800 text-sm">
+            {responseText}
+          </div>
         </div>
       );
     }

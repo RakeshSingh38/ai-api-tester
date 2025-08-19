@@ -229,35 +229,32 @@ const handleStreamingResponse = async (response: Response): Promise<any> => {
     }
   };
 
-  const sendCompletion = async (
-    chatId: string, 
-    promptText: string, 
-    modelType: string
-  ): Promise<any> => {
-    const payload: CompletionRequest = {
-      chatId: chatId,
-      model: modelType,
-      modelCount: 3,
-      assetIds: [],
-      type: "text",
-      groupId: generateUUID(),
-      prompt: promptText,
-      assistantMessageId: generateUUID()
-    };
+// components/ApiTester.tsx - Update the sendCompletion function
 
-    try {
-      // Try direct request first
-      const result = await makeDirectRequest(`${baseUrl}/chat/completions`, payload);
-      console.log('Completion received:', result);
-      return result;
-    } catch (error) {
-      console.log('Direct completion failed, trying proxy...');
-      // Fallback to proxy
-      const result = await makeProxyRequest(`${baseUrl}/chat/completions`, payload);
-      console.log('Completion received via proxy:', result);
-      return result;
-    }
+const sendCompletion = async (
+  chatId: string, 
+  promptText: string, 
+  modelType: string
+): Promise<any> => {
+  const payload: CompletionRequest = {
+    chatId: chatId,
+    model: modelType,
+    modelCount: 3,
+    assetIds: [],
+    type: "text",
+    groupId: generateUUID(),
+    prompt: promptText,
+    assistantMessageId: generateUUID()
   };
+
+  console.log('Sending completion request:', payload);
+  
+  // Use proxy for reliable streaming
+  const result = await makeProxyRequest(`${baseUrl}/chat/completions`, payload);
+  console.log('Completion response received:', result);
+  return result;
+};
+
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();

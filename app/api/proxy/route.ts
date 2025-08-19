@@ -28,7 +28,6 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Making request to:', url);
-    console.log('Request data:', JSON.stringify(data, null, 2));
 
     // Handle streaming responses for completions endpoint
     if (url.includes('/chat/completions')) {
@@ -39,7 +38,6 @@ export async function POST(request: NextRequest) {
       });
 
       console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -50,58 +48,58 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Check if it's a streaming response
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('text/event-stream')) {
-        // Handle Server-Sent Events
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let result = '';
-        let chunks = [];
+      // Read the entire streaming response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullStreamText = '';
+      let events: any[] = [];
 
-        if (reader) {
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              
-              const chunk = decoder.decode(value, { stream: true });
-              result += chunk;
-              
-              // Parse SSE data
-              const lines = chunk.split('\n');
-              for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                  const jsonStr = line.slice(6);
-                  if (jsonStr.trim() !== '[DONE]' && jsonStr.trim() !== '') {
-                    try {
-                      const jsonData = JSON.parse(jsonStr);
-                      chunks.push(jsonData);
-                    } catch (e) {
-                      // Skip invalid JSON
-                    }
+      if (reader) {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            fullStreamText += chunk;
+            
+            // Parse each line that starts with "data: "
+            const lines = chunk.split('\n');
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const jsonStr = line.slice(6).trim();
+                if (jsonStr && jsonStr !== '[DONE]') {
+                  try {
+                    const eventData = JSON.parse(jsonStr);
+                    events.push(eventData);
+                    console.log('Parsed event:', eventData);
+                  } catch (e) {
+                    console.log('Failed to parse:', jsonStr);
                   }
                 }
               }
             }
-            
-            console.log('Streaming chunks received:', chunks.length);
-            return NextResponse.json({ data: chunks });
-          } catch (streamError) {
-            console.error('Stream reading error:', streamError);
-            return NextResponse.json({ data: chunks });
           }
-        }
-      } else {
-        // Handle regular JSON response
-        const responseText = await response.text();
-        console.log('Response text:', responseText);
-        
-        try {
-          const jsonData = JSON.parse(responseText);
-          return NextResponse.json(jsonData);
-        } catch {
-          return NextResponse.json({ data: responseText });
+          
+          console.log('Stream reading complete. Total events:', events.length);
+          console.log('Full stream text:', fullStreamText);
+          
+          // Return all collected events
+          return NextResponse.json({ 
+            data: events,
+            streamText: fullStreamText,
+            totalEvents: events.length 
+          });
+          
+        } catch (streamError) {
+          console.error('Stream reading error:', streamError);
+          return NextResponse.json({ 
+            data: events,
+            error: 'Stream interrupted',
+            partialText: fullStreamText 
+          });
+        } finally {
+          reader.releaseLock();
         }
       }
     } else {
@@ -113,7 +111,6 @@ export async function POST(request: NextRequest) {
       });
 
       const responseText = await response.text();
-      console.log('Regular response:', response.status, responseText);
 
       if (!response.ok) {
         return NextResponse.json(
