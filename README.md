@@ -1,70 +1,61 @@
-# 🤖 AI Chat Tester
+# 🤖 AI Fiesta API Tester
 
-AI Chat Tester is a developer tool that allows you to **test multiple AI models with your own API access**.  
-Easily switch between models like **Claude Sonnet, GPT-4, ChatGPT 3.5, Gemini Pro, DeepSeek, Perplexity Sonar, Grok**, and more — all from one unified UI.  
+Simple tool to test different AI models (GPT, Claude, Gemini) through the AI
+Fiesta API.
 
----
+## What it does
 
-## 🚀 Features
-- ✅ Connect via **Bearer Token** (from AI Fiesta / API provider)
-- ✅ Test multiple AI models in one place
-- ✅ Easy-to-use **chat interface**
-- ✅ Model selection with **Free / Premium** tags
-- ✅ Error handling (proxy/server issues displayed clearly)
+-   Test multiple AI models in one place
+-   Real-time streaming responses
+-   Saves your settings
+-   Clean, simple interface
 
----
+## Quick Start
 
-## 🛠️ Setup & Installation
+1. Clone and install:
 
-### Prerequisites
-- Node.js & npm installed
-- Chrome (if testing with browser extensions)
-- An API token (Bearer Token)
+```bash
+git clone <repository-url>
+cd AI-Fiesta-Free
+npm install
+```
 
-### Steps
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/your-username/ai-chat-tester.git
-   cd ai-chat-tester
-   ```
+2. Start it:
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+npm run dev
+```
 
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
+3. Get your API token from [AI Fiesta](https://chat.aifiesta.ai) (check Network
+   tab in DevTools)
 
-4. Open in browser:
-   ```
-   http://localhost:3000
-   ```
+4. Open http://localhost:3000 and start chatting!
 
----
+## Available Models
 
-## 📌 How to Use
-1. Copy your **Bearer Token** from AI Fiesta (Network tab in DevTools).
-2. Paste it into the **Bearer Token** field.
-3. Select your desired AI Model (e.g., GPT-4, Claude, DeepSeek, etc.).
-4. Type your **chat title** and **prompt**.
-5. Click **Send** to get responses.
-6. Errors (e.g., proxy terminated) will be shown below.
+-   GPT-4, GPT-3.5 Turbo
+-   Claude 3.5 Sonnet
+-   Gemini Pro
+-   DeepSeek, Llama 3.1
 
----
+## How to Use
 
-## 📸 Screenshot
-![AI Chat Tester](./screenshot.png)
+1. Paste your Bearer token
+2. Pick a model
+3. Type your question
+4. Hit send!
+
+## Tech Stack
+
+-   Next.js 14
+-   TypeScript
+-   Tailwind CSS
+
+## License
+
+MIT License
 
 ---
 
-## ⚠️ Disclaimer
-This tool is for **educational and testing purposes only**.  
-You must have valid API access for the models you use. Unauthorized usage of paid APIs may violate terms of service.
-
----
-
-## 📜 License
-MIT License – free to use and modify.
+**Made by**: Rakesh Singh  
+**Email**: contact@iamrakesh.codes
